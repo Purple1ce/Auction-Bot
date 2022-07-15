@@ -8,6 +8,12 @@ def is_float(n):
         return False
     return True
 
+def trim(text, substring, points = True):
+    temp = text.replace(substring, "")
+    if points:
+        temp = temp.replace(" ", "").replace(".", "").replace(",", "")
+
+    return temp
 
 class Auction:
     def __init__(self, channel):
@@ -19,6 +25,7 @@ class Auction:
         self.channel = channel
         self.bidder = [Bidder("Starting Bid", 0, 0)]
         self.repair_cost = 0
+        self.silverbags = 0
         self.messages = []
         self.date = 0
 
@@ -29,8 +36,7 @@ class Auction:
         return self.bidder[len(self.bidder) - 1].bid
 
     async def check_timeleft(self, message):
-        substring = message.content.replace("!set time", "")
-        substring = substring.replace(" ", "")
+        substring = trim(message.content, "!set time ")
         if not substring.isnumeric():
             await message.channel.send("Auction time needs to be a number!", delete_after=10)
         else:
@@ -87,8 +93,7 @@ class Auction:
                                        f"million silver")
 
     async def set_starting_bid(self, message):
-        substring = message.content.replace("!starting bid", "")
-        substring = substring.replace(" ", "")
+        substring = trim(message.content, "!starting bid ", False)
         if not is_float(substring):
             await message.channel.send(f"{message.author.mention}"
                                        f"The starting bid needs to be a number!",delete_after=10)
@@ -98,8 +103,7 @@ class Auction:
             self.bidder[0].bid = num
 
     async def set_minimum_increment(self, message):
-        substring = message.content.replace("!minimum increment", "")
-        substring = substring.replace(" ", "")
+        substring = trim(message.content, "!minimum increment ", False)
         if not is_float(substring):
             await message.channel.send(f"{message.author.mention}"
                                        f"The minimum Bid needs to be a number!",delete_after=10)
@@ -108,8 +112,7 @@ class Auction:
             self.minimum_increment = round(float(substring), 1)
 
     async def add_repaircost(self, message):
-        substring = message.content.replace("!add repaircost", "")
-        substring = substring.replace(" ", "").replace(".", "").replace(",", "")
+        substring = trim(message.content, "!add repaircost ")
         if not substring.isnumeric():
             await message.channel.send(f"{message.author.mention}"
                                        f"The minimum Bid needs to be a number!", delete_after=10)
@@ -132,8 +135,7 @@ class Auction:
             await self.channel.send("There is no bid to delete", delete_after=10)
 
     async def bid(self, message):
-        substring = message.content.replace("bid", "")
-        substring = substring.replace(" ", "")
+        substring = trim(message.content, "bid ", False)
         if not is_float(substring):
             await message.channel.send(
                 f"{message.author.mention}Your bid needs to be a number and not {substring}!",
@@ -190,6 +192,24 @@ class Auction:
 
             await message.channel.send(f"{names} have been added to the split.")
             self.participants.extend(message.mentions)
+
+    async def add_silverbags(self, message):
+        substring = trim(message.content, "!add silverbags ")
+        if not substring.is_nummeric():
+            await message.channel.send(
+                f"{message.author.mention}The Silverbag amount needs to be a number and not "
+                f"{substring}!", delete_after=10)
+        else:
+            self.silverbags += int(substring)
+            await message.channel.send(f"The amount of: {substring:,} silver has been added "
+                                       f"to the total value!")
+
+    async def print_auction_value(self):
+        temp = int((self.get_highest_bid() * 10**6) + self.silverbags - self.repair_cost)
+        await self.channel.send(f"The current total value of the Auction is: "
+                                f"{temp} silver. Consisting of the highest bid {self.get_highest_bid()}m "
+                                f"plus {self.silverbags:,} in silverbags "
+                                f"minus {self.repair_cost:,} in repaircosts.")
 
     async def end(self):
         self.running = False
